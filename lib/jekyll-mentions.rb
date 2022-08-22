@@ -15,6 +15,7 @@ module Jekyll
     class << self
       # rubocop:disable Metrics/AbcSize
       def mentionify(doc)
+        people = doc.data['people']
         content = doc.output
         return unless content.include?("@")
 
@@ -29,11 +30,22 @@ module Jekyll
 
           return unless body_content&.match?(filter_regex)
 
-          processed_markup = filter_with_mention(src).call(body_content)[:output].to_s
+          filtered = filter_with_mention(src)
+          called = filtered.call(body_content)
+          if people == nil
+            doc.data['people'] == called[:mentioned_usernames]
+          else
+            for mention in called[:mentioned_usernames]
+              people.append(mention) unless people.include?(mention)
+            end
+            doc.data['people'] = people
+          end
+          processed_markup = called[:output].to_s
           doc.output       = String.new(head) << opener << processed_markup << rest.join
         else
           return unless content&.match?(filter_regex)
 
+          doc.data['people'] = people
           doc.output = filter_with_mention(src).call(content)[:output].to_s
         end
       end
