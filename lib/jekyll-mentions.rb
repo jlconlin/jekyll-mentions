@@ -15,6 +15,7 @@ module Jekyll
     class << self
       # rubocop:disable Metrics/AbcSize
       def mentionify(doc)
+        people = doc.data['people']
         content = doc.output
         return unless content.include?("@")
 
@@ -29,15 +30,46 @@ module Jekyll
 
           return unless body_content&.match?(filter_regex)
 
-          processed_markup = filter_with_mention(src).call(body_content)[:output].to_s
+          filtered = filter_with_mention(src)
+          called = filtered.call(body_content)
+          if people == nil
+            doc.data['people'] == called[:mentioned_usernames]
+          else
+            for mention in called[:mentioned_usernames]
+              people.append(mention) unless people.include?(mention)
+            end
+            doc.data['people'] = people
+          end
+          processed_markup = called[:output].to_s
           doc.output       = String.new(head) << opener << processed_markup << rest.join
         else
           return unless content&.match?(filter_regex)
 
+          doc.data['people'] = people
           doc.output = filter_with_mention(src).call(content)[:output].to_s
         end
       end
       # rubocop:enable Metrics/AbcSize
+
+      # Public: Find al lthe mentions in the doc and add it to
+      # doc.data['mentions']
+      def pre_render(doc)
+        found_mentions = doc.content.scan(/\s@(\w+)/)
+        if found_mentions.empty?
+          return
+        end
+
+        mentions = doc.data['mentions']
+        if mentions == nil
+          mentions = []
+        end
+
+        for mention in found_mentions
+          mentions.append(mention[0]) unless mentions.include?(mention[0])
+        end
+
+        doc.data['mentions'] = mentions
+      end
 
       # Public: Create or fetch the filter for the given {{src}} base URL.
       #
@@ -62,7 +94,7 @@ module Jekyll
 
       # Public: Calculate the base URL to use for mentioning.
       #
-      # The custom base URL can be defined in either the site config or a document's
+      # The custom base URL can be defined \in either the site config or a document's
       # front matter as `jekyll-mentions.base_url` or `jekyll-mentions`, and must be
       # a valid URL (i.e. it must include a protocol and valid domain).
       # It should _not_ have a trailing slash.
@@ -125,4 +157,8 @@ end
 
 Jekyll::Hooks.register [:pages, :documents], :post_render do |doc|
   Jekyll::Mentions.mentionify(doc) if Jekyll::Mentions.mentionable?(doc)
+end
+
+Jekyll::Hooks.register [:posts, :pages, :documents], :pre_render do |doc|
+  Jekyll::Mentions.pre_render(doc)
 end
