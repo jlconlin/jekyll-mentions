@@ -54,6 +54,9 @@ module Jekyll
       # Public: Find al lthe mentions in the doc and add it to
       # doc.data['mentions']
       def pre_render(doc)
+        if doc.content == nil
+          return
+        end
         found_mentions = doc.content.scan(/\s@(\w+)/)
         if found_mentions.empty?
           return
