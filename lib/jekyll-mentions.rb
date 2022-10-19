@@ -53,7 +53,7 @@ module Jekyll
 
       # Public: Find al lthe mentions in the doc and add it to
       # doc.data['mentions']
-      def pre_render(doc)
+      def pre_render(doc, payload)
         if doc.content == nil
           return
         end
@@ -62,7 +62,7 @@ module Jekyll
           return
         end
 
-        mentions = doc.data['mentions']
+        mentions = payload['page']['mentions']
         if mentions == nil
           mentions = []
         end
@@ -70,8 +70,7 @@ module Jekyll
         for mention in found_mentions
           mentions.append(mention[0]) unless mentions.include?(mention[0])
         end
-
-        doc.data['mentions'] = mentions
+        payload['page']['mentions'] = mentions
       end
 
       # Public: Create or fetch the filter for the given {{src}} base URL.
@@ -162,6 +161,6 @@ Jekyll::Hooks.register [:pages, :documents], :post_render do |doc|
   Jekyll::Mentions.mentionify(doc) if Jekyll::Mentions.mentionable?(doc)
 end
 
-Jekyll::Hooks.register [:posts, :pages, :documents], :pre_render do |doc|
-  Jekyll::Mentions.pre_render(doc)
+Jekyll::Hooks.register [:posts, :pages, :documents], :pre_render do |doc, payload|
+  Jekyll::Mentions.pre_render(doc, payload)
 end
