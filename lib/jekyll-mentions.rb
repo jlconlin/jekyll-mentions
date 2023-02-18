@@ -13,7 +13,7 @@ module Jekyll
     InvalidJekyllMentionConfig = Class.new(Jekyll::Errors::FatalException)
 
     class << self
-      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       def mentionify(doc)
         people = doc.data['people']
         content = doc.output
@@ -49,7 +49,7 @@ module Jekyll
           doc.output = filter_with_mention(src).call(content)[:output].to_s
         end
       end
-      # rubocop:enable Metrics/AbcSize
+      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
       # Public: Find al lthe mentions in the doc and add it to
       # doc.data['mentions']
@@ -85,7 +85,7 @@ module Jekyll
       end
 
       def mention_username_pattern
-        @mention_username_pattern ||= %r![\w][\w-]*!
+        @mention_username_pattern ||= %r!\w[\w-]*!
       end
 
       # Public: Filters hash where the key is the mention base URL.
