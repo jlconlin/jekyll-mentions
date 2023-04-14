@@ -155,12 +155,31 @@ module Jekyll
       end
     end
   end
+
+end
+
+module Mentions
+  class Generator < Jekyll::Generator
+    def generate(site)
+      docs = site.posts.docs
+
+      docs.each do | doc |
+        found_mentions = doc.content.scan(/\s@(\w+)/)
+        if found_mentions.empty?
+          next
+        end
+        mentions = doc.data['mentions'] || []
+        for mention in found_mentions
+          mentions.append(mention[0])
+        end
+
+        doc.data['mentions'] = mentions.uniq
+      end
+          
+    end
+  end
 end
 
 Jekyll::Hooks.register [:pages, :documents], :post_render do |doc|
   Jekyll::Mentions.mentionify(doc) if Jekyll::Mentions.mentionable?(doc)
-end
-
-Jekyll::Hooks.register [:posts, :pages, :documents], :pre_render do |doc, payload|
-  Jekyll::Mentions.pre_render(doc, payload)
 end
