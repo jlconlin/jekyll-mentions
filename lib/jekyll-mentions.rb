@@ -164,15 +164,12 @@ module Mentions
       docs = site.posts.docs
 
       docs.each do | doc |
-        found_mentions = doc.content.scan(/\s@(\w+)/)
+        found_mentions = doc.content.scan(/\s@(\w+)/).map{ | mention | mention[0] }
         if found_mentions.empty?
           next
         end
         mentions = doc.data['mentions'] || []
-        for mention in found_mentions
-          mentions.append(mention[0])
-        end
-
+        mentions.concat(found_mentions.uniq)
         doc.data['mentions'] = mentions.uniq
       end
           
