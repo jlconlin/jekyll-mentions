@@ -169,33 +169,3 @@ end
 Jekyll::Hooks.register [:pages, :documents], :post_render do |doc|
   Jekyll::Mentions.mentionify(doc) if Jekyll::Mentions.mentionable?(doc)
 end
-
-Jekyll::Hooks.register [:posts, :pages, :documents], :post_render do |doc|
-  mentions = Array(doc.data["mentions"])
-  next if mentions.empty?
-
-  site = doc.site
-  site.data["mention_index"] ||= {}
-
-  # Use doc.id if available (Documents), otherwise fall back to URL (Pages, etc.)
-  doc_identifier = if doc.respond_to?(:id)
-                     doc.id
-                   else
-                     doc.url
-                   end
-
-  mentions.each do |id|
-    site.data["mention_index"][id] ||= []
-
-    entry = {
-      "id"    => doc_identifier,
-      "url"   => doc.url,
-      "title" => doc.data["title"],
-    }
-
-    # Avoid duplicates in case hook gets run more than once
-    unless site.data["mention_index"][id].any? { |e| e["id"] == entry["id"] }
-      site.data["mention_index"][id] << entry
-    end
-  end
-end
