@@ -15,7 +15,7 @@ module Jekyll
     class << self
       # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       def mentionify(doc)
-        people = doc.data['people']
+        mentions = doc.data['mentions']
         content = doc.output
         return unless content.include?("@")
 
@@ -32,20 +32,12 @@ module Jekyll
 
           filtered = filter_with_mention(src)
           called = filtered.call(body_content)
-          if people == nil
-            doc.data['people'] == called[:mentioned_usernames]
-          else
-            for mention in called[:mentioned_usernames]
-              people.append(mention) unless people.include?(mention)
-            end
-            doc.data['people'] = people
-          end
+
           processed_markup = called[:output].to_s
           doc.output       = String.new(head) << opener << processed_markup << rest.join
         else
           return unless content&.match?(filter_regex)
 
-          doc.data['people'] = people
           doc.output = filter_with_mention(src).call(content)[:output].to_s
         end
       end
@@ -57,18 +49,15 @@ module Jekyll
         if doc.content == nil
           return
         end
+
+        #  found_mentions is an array like [["Alice"], ["Bob"], ...]
         found_mentions = doc.content.scan(/\s@(\w+)/)
-        if found_mentions.empty?
-          return
-        end
+        return if found_mentions.empty?
 
-        mentions = payload['page']['mentions']
-        if mentions == nil
-          mentions = []
-        end
-
-        for mention in found_mentions
-          mentions.append(mention[0]) unless mentions.include?(mention[0])
+        mentions = Array(payload.dig("page", "mentions"))
+        found_mentions.each do |m|
+          id = m[0]
+          mentions << id unless mentions.include?(id)
         end
         payload['page']['mentions'] = mentions
       end
@@ -116,8 +105,8 @@ module Jekyll
           mention_config.fetch("base_url", default_mention_base)
         else
           raise InvalidJekyllMentionConfig,
-                "Your jekyll-mentions config has to either be a string or a hash. " \
-                "It's a #{mention_config.class} right now."
+            "Your jekyll-mentions config has to either be a string or a hash. " \
+            "It's a #{mention_config.class} right now."
         end
       end
 
@@ -172,11 +161,41 @@ module Mentions
         mentions.concat(found_mentions.uniq)
         doc.data['mentions'] = mentions.uniq
       end
-          
+
     end
   end
 end
 
 Jekyll::Hooks.register [:pages, :documents], :post_render do |doc|
   Jekyll::Mentions.mentionify(doc) if Jekyll::Mentions.mentionable?(doc)
+end
+
+Jekyll::Hooks.register [:posts, :pages, :documents], :post_render do |doc|
+  mentions = Array(doc.data["mentions"])
+  next if mentions.empty?
+
+  site = doc.site
+  site.data["mention_index"] ||= {}
+
+  # Use doc.id if available (Documents), otherwise fall back to URL (Pages, etc.)
+  doc_identifier = if doc.respond_to?(:id)
+                     doc.id
+                   else
+                     doc.url
+                   end
+
+  mentions.each do |id|
+    site.data["mention_index"][id] ||= []
+
+    entry = {
+      "id"    => doc_identifier,
+      "url"   => doc.url,
+      "title" => doc.data["title"],
+    }
+
+    # Avoid duplicates in case hook gets run more than once
+    unless site.data["mention_index"][id].any? { |e| e["id"] == entry["id"] }
+      site.data["mention_index"][id] << entry
+    end
+  end
 end
